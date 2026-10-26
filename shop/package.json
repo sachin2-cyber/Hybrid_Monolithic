@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "start": "node src/app.ts",
     "test": "node --test",
     "boundaries": "node tools/check-boundaries.ts"
   },
-  "//": "Nothing is required to run or test this. Editor type-checking is optional: npm i -D typescript @types/node, then npx tsc --noEmit"
+  "//": "Nothing is required to run or test this. Editor type-checking is optional: npm i -D typescript @types/node, then npx tsc --noEmit",
+  "devDependencies": {
+    "@types/node": "^26.6.5"
+  }
 }

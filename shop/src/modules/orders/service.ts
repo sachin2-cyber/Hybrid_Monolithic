@@ -1,13 +1,7 @@
 import { orders, type Order } from "./repo.ts";
-
-// VIOLATION: reaches past inventory's index.ts into its service
-import { reserve } from "../inventory/service.ts";
-// VIOLATION: reaches straight into inventory's private repo
-import { stock } from "../inventory/repo.ts";
-// VIOLATION: reaches past payments' index.ts
-import { charge } from "../payments/service.ts";
-// VIOLATION: orders should not call notifications at all - task 3
-import { send } from "../notifications/service.ts";
+import { reserve } from "../inventory/index.ts";
+import { charge } from "../payments/index.ts";
+import { bus } from "../../platform/event-bus.ts";
 
 export type PlaceResult =
   | { ok: true; orderId: string; amountPaise: number }
@@ -23,9 +17,7 @@ export interface PlaceInput {
 let n = 0;
 
 export function placeOrder({ sku, qty, unitPaise, email }: PlaceInput): PlaceResult {
-  // VIOLATION: reading another module's table directly
-  if (!stock().has(sku)) return { ok: false, reason: "unknown_sku" };
-
+  // reserve() already answers "unknown_sku" for a sku it does not hold.
   const r = reserve(sku, qty);
   if (!r.ok) return { ok: false, reason: r.reason };
 
@@ -36,7 +28,8 @@ export function placeOrder({ sku, qty, unitPaise, email }: PlaceInput): PlaceRes
   const id = `ord_${++n}`;
   orders().set(id, { id, sku, qty, amountPaise, chargeId: c.chargeId });
 
-  send(email, `Order ${id} confirmed`);
+  // Orders announces the fact. It does not know who listens.
+  bus.publish("order.placed", { orderId: id, email, amountPaise });
 
   return { ok: true, orderId: id, amountPaise };
 }

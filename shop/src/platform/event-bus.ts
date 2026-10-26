@@ -1,5 +1,5 @@
 /**
- * An in-process event bus. THIS IS A STUB - you finish it.
+ * An in-process event bus.
  *
  * Requirements:
  *   - a handler that throws must not stop the other handlers
@@ -22,6 +22,43 @@ export interface EventBus {
   subscribe<K extends EventName>(name: K, fn: Handler<K>): Unsubscribe;
 }
 
+type AnyHandler = (payload: DomainEvents[EventName]) => void;
+
 export function createEventBus(): EventBus {
-  throw new Error("not implemented");
+  const handlers = new Map<EventName, AnyHandler[]>();
+
+  return {
+    subscribe(name, fn) {
+      const list = handlers.get(name) ?? [];
+      const registered = fn as AnyHandler;
+      list.push(registered); // pushed even if already present: no dedupe
+      handlers.set(name, list);
+
+      let active = true;
+      return () => {
+        if (!active) return; // a second call must not remove a second registration
+        active = false;
+        const current = handlers.get(name);
+        const i = current?.indexOf(registered) ?? -1;
+        if (current && i !== -1) current.splice(i, 1);
+      };
+    },
+
+    publish(name, payload) {
+      // Copy first, so a handler that unsubscribes mid-publish cannot skip one.
+      const list = [...(handlers.get(name) ?? [])];
+      for (const fn of list) {
+        try {
+          fn(payload);
+        } catch (err) {
+          // One bad handler must not stop the rest. Report it and carry on.
+          console.error(`handler for "${name}" threw:`, err);
+        }
+      }
+      return list.length;
+    },
+  };
 }
+
+/** The one bus the shop runs on. Modules publish to it and subscribe to it. */
+export const bus = createEventBus();
